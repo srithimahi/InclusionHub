@@ -15,6 +15,7 @@ class SpeechToTextManager(private val context: Context) {
 
     private var resultCallback: ((String) -> Unit)? = null
     private var partialCallback: ((String) -> Unit)? = null
+    private var isListening = false
 
     private val recognizerIntent: Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
         putExtra(
@@ -43,6 +44,9 @@ class SpeechToTextManager(private val context: Context) {
             }
             override fun onError(error: Int) {
                 Log.d("STT", "Error: $error")
+                if(isListening) {
+                    speechRecognizer.startListening(recognizerIntent)
+                }
             }
 
             override fun onResults(results: Bundle?) {
@@ -52,6 +56,10 @@ class SpeechToTextManager(private val context: Context) {
                 Log.d("STT", "Results: $text")
                 if(!text.isNullOrEmpty()) {
                     resultCallback?.invoke(text)
+                }
+
+                if(isListening) {
+                    speechRecognizer.startListening(recognizerIntent)
                 }
             }
             override fun onPartialResults(partialResults: Bundle?) {
@@ -74,9 +82,11 @@ class SpeechToTextManager(private val context: Context) {
     ) {
         partialCallback = onPartial
         resultCallback = onFinal
+        isListening = true
         speechRecognizer.startListening(recognizerIntent)
     }
     fun stopListening() {
+        isListening = false
         speechRecognizer.stopListening()
     }
     fun destroy() {

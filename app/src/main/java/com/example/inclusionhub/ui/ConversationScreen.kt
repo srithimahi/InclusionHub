@@ -87,6 +87,8 @@ fun ConversationScreen(onBack: () -> Unit) {
                 ) {
                     Text("Stop")
                 }
+
+
             }
         }
     }
