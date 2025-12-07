@@ -17,14 +17,21 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.example.inclusionhub.tts.TextToSpeechManager
 
 
 @Composable
-fun ConversationScreen(onBack: () -> Unit) {
+fun ConversationScreen(
+    onBack: () -> Unit,
+    ttsManager: TextToSpeechManager,
+    sttManager: SpeechToTextManager
+) {
+
     val context = LocalContext.current
     val sttManager = remember { SpeechToTextManager(context) }
 
     var caption by remember { mutableStateOf("Press Start and speak...") }
+    var textToSpeech by remember { mutableStateOf("")}
 
     Scaffold(
         topBar = {
@@ -47,33 +54,37 @@ fun ConversationScreen(onBack: () -> Unit) {
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
+                .padding(20.dp)
         ) {
+
+            Text(
+                text = "Speech to Text",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
+                    .height(250.dp)
             ) {
-                Box(modifier = Modifier.padding(16.dp)) {
+                Box(modifier = Modifier.padding(20.dp)) {
                     Text(text = caption)
                 }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceEvenly
             ) {
                 Button(
                     onClick = {
                         sttManager.startListening(
-                            onPartial = { partialText ->
-                                caption = partialText
-                            },
-                            onFinal = { finalText ->
-                                caption = finalText
-                            }
+                            onPartial = { caption = it },
+                            onFinal = { caption = it }
                         )
                     }
                 ) {
@@ -81,16 +92,46 @@ fun ConversationScreen(onBack: () -> Unit) {
                 }
 
                 Button(
-                    onClick = {
-                        sttManager.stopListening()
-                    }
+                    onClick = { sttManager.stopListening() }
                 ) {
                     Text("Stop")
                 }
+            }
 
+            Spacer(modifier = Modifier.height(20.dp))
 
+            Text(
+                text = "Text to Speech",
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            TextField(
+                value = textToSpeech,
+                onValueChange = { textToSpeech = it },
+                label = { Text("Type your text then click Speak")},
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(200.dp)
+                )
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                Button(
+                    onClick = {
+                        ttsManager.speak(textToSpeech)
+                    }
+                ) {
+                    Text("Speak")
+                }
             }
         }
     }
 }
+
 

@@ -10,30 +10,43 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import com.example.inclusionhub.stt.SpeechToTextManager
+import com.example.inclusionhub.tts.TextToSpeechManager
 import com.example.inclusionhub.ui.theme.InclusionHubTheme
 import com.example.inclusionhub.ui.HomeScreen
 import com.example.inclusionhub.ui.ConversationScreen
 import com.example.inclusionhub.ui.SoundAlertScreen
 
-private val RECORD_AUDIO_REQUEST_CODE = 1001
+private const val RECORD_AUDIO_REQUEST_CODE = 1001
 
 class MainActivity : ComponentActivity() {
+    private lateinit var ttsManager: TextToSpeechManager
+    private lateinit var sttManager: SpeechToTextManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         ensureAudioPermission()
+
+        ttsManager = TextToSpeechManager(this)
+        sttManager = SpeechToTextManager(this)
+
         setContent {
             InclusionHubTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    InclusionHubApp()
+                    InclusionHubApp(ttsManager, sttManager)
                 }
             }
         }
     }
 
-
+    override fun onDestroy() {
+        super.onDestroy()
+        ttsManager.shutdown()
+        sttManager.stopListening()
+    }
     private fun ensureAudioPermission() {
         val granted = ContextCompat.checkSelfPermission(
             this,
@@ -50,7 +63,8 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun InclusionHubApp() {
+
+    fun InclusionHubApp(ttsManager: TextToSpeechManager, sttManager: SpeechToTextManager) {
         var currentScreen by remember { mutableStateOf("home") }
 
         when (currentScreen) {
@@ -60,7 +74,9 @@ class MainActivity : ComponentActivity() {
             )
 
             "conversation" -> ConversationScreen(
-                onBack = { currentScreen = "home" }
+                onBack = { currentScreen = "home" },
+                ttsManager = ttsManager,
+                sttManager = sttManager
             )
 
             "soundalert" -> SoundAlertScreen(
