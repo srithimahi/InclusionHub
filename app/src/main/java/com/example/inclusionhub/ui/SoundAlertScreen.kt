@@ -1,7 +1,10 @@
+@file:OptIn(ExperimentalMaterial3Api::class)
+
 package com.example.inclusionhub.ui
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -12,32 +15,50 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.IconButton
-
-
+import androidx.compose.ui.platform.LocalContext
+import com.example.inclusionhub.audio.SoundDetector
+import com.example.inclusionhub.alerts.VibrationController
 
 data class SoundAlert(
     val name: String,
     val description: String,
-    var enabled: Boolean = false
+    val enabled: Boolean = false
 )
+
 @Composable
 fun SoundAlertScreen(onBack: () -> Unit) {
 
+    val context = LocalContext.current
+    val vibrationController = remember { VibrationController(context) }
+    val soundDetector = remember { SoundDetector() }
+
     var detectedSound by remember { mutableStateOf("") }
+    var isListening by remember { mutableStateOf(false) }
 
     val alertsList = remember {
         mutableStateListOf(
-            SoundAlert("Fire Alarm", "detects fire alarms or high pitched beeps"),
-            SoundAlert("Baby Crying", "to be written"),
-            SoundAlert("Doorbell", "to be written"),
-            SoundAlert("Noise/yelling", "to be written")
+            SoundAlert("Fire Alarm", "Detects fire alarms or high pitched beeps", enabled = true),
+            SoundAlert("Baby Crying", "Detects baby crying sounds", enabled = true),
+            SoundAlert("Doorbell", "Detects doorbell chimes", enabled = true),
+            SoundAlert("Noise/yelling", "Detects loud yelling or shouting", enabled = true)
         )
     }
 
+    // Start/stop listening when isListening changes
+    LaunchedEffect(isListening) {
+        if (isListening) {
+            soundDetector.updateEnabledSounds(
+                alertsList.filter { it.enabled }.map { it.name }
+            )
+
+            soundDetector.startListening { soundName ->
+                detectedSound = soundName
+                vibrationController.vibrateForSound(soundName)
+            }
+        } else {
+            soundDetector.stopListening()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -67,13 +88,13 @@ fun SoundAlertScreen(onBack: () -> Unit) {
             )
             Spacer(modifier = Modifier.height(20.dp))
 
-            if(detectedSound.isNotEmpty()){
+            if (detectedSound.isNotEmpty()) {
                 Card(
                     colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3C4)),
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp)
                 ) {
-                    Column (
+                    Column(
                         modifier = Modifier.padding(16.dp),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
@@ -98,9 +119,39 @@ fun SoundAlertScreen(onBack: () -> Unit) {
                         description = alert.description,
                         enabled = alert.enabled,
                         onToggle = { toggled ->
-                            alert.enabled = toggled
+                            val index = alertsList.indexOf(alert)
+                            if (index != -1) {
+                                alertsList[index] = alertsList[index].copy(enabled = toggled)
+                            }
+                            if (isListening) {
+                                soundDetector.updateEnabledSounds(
+                                    alertsList.filter { it.enabled }.map { it.name }
+                                )
+                            }
                         }
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = { isListening = true },
+                    enabled = !isListening,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Start Listening")
+                }
+                OutlinedButton(
+                    onClick = { isListening = false },
+                    enabled = isListening,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("Stop Listening")
                 }
             }
         }
@@ -111,42 +162,39 @@ fun SoundAlertScreen(onBack: () -> Unit) {
 fun AlertCard(
     title: String,
     description: String,
-    onToggle: (Boolean) -> Unit,
-    enabled: Boolean
-){
-    var checked by rememberSaveable { mutableStateOf(enabled) }
-
-     Card(
-         modifier = Modifier
-             .fillMaxWidth()
-             .padding(vertical = 8.dp),
-         shape = RoundedCornerShape(18.dp),
-         elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
-     ) {
-         Row(
-             modifier = Modifier
-                 .padding(16.dp)
-                 .fillMaxWidth(),
-             verticalAlignment = Alignment.CenterVertically,
-             horizontalArrangement = Arrangement.SpaceBetween
-         ) {
-             Column(modifier = Modifier.weight(1f)){
-                 Text(title, style = MaterialTheme.typography.titleMedium)
-                 Spacer(Modifier.height(4.dp))
-                 Text(
-                     description,
-                     style = MaterialTheme.typography.bodyMedium,
-                     color = Color.Gray
-                 )
-             }
-             Switch(
-                 checked = checked,
-                 onCheckedChange = { isChecked ->
-                     checked = isChecked
-                     onToggle(isChecked)
-                 }
-             )
-         }
-     }
+    enabled: Boolean,
+    onToggle: (Boolean) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        shape = RoundedCornerShape(18.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(title, style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray
+                )
+            }
+            Switch(
+                checked = enabled,
+                onCheckedChange = { isChecked ->
+                    onToggle(isChecked)
+                }
+            )
+        }
+    }
 }
 
