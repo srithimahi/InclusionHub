@@ -56,7 +56,7 @@ dependencies {
     implementation(libs.androidx.material3)
 
     // ML Kit Translation (for later)
-    implementation("com.google.mlkit:translate:17.0.1")
+    implementation("com.google.mlkit:translate:17.0.3")
 
     // Testing
     testImplementation(libs.junit)
